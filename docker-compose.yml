@@ -1,0 +1,34 @@
+# Agent + sandbox orchestration for local runs.
+# The sandbox image is used by DockerRunner (python:3.11-slim by default).
+# The agent service mounts the Docker socket so it can spawn sandbox containers.
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: autopatch-agent:local
+    env_file:
+      - .env
+    environment:
+      - WORK_DIR=/data/work
+      - LOG_DIR=/data/logs
+      - SANDBOX_IMAGE=python:3.11-slim
+      - DOCKER_NETWORK_DISABLED=true
+    volumes:
+      - ./:/workspace:ro
+      - autopatch-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    # Example: docker compose run --rm agent run --repo demo/sample_target --title "..." --issue-file demo/sample_issue.md
+    profiles: ["agent"]
+
+  # Pre-pull / keep a known sandbox image available for DockerRunner
+  sandbox:
+    image: python:3.11-slim
+    profiles: ["sandbox"]
+    command: ["python", "-c", "print('sandbox image ready')"]
+
+volumes:
+  autopatch-data:
