@@ -5,9 +5,10 @@ from __future__ import annotations
 import re
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from autopatch.tracing.logger import StructuredLogger
 
@@ -218,21 +219,10 @@ def _with_github_retries(
         except Exception as exc:  # noqa: BLE001 — classify below
             last_exc = exc
             msg = str(exc).lower()
-            # Auth / permission: fail closed immediately
-            if any(
-                token in msg
-                for token in (
-                    "bad credentials",
-                    "401",
-                    "403",
-                    "resource not accessible",
-                    "not found",
-                    "permission",
-                )
-            ) and attempt == 1:
-                # Still retry 404 once (eventual consistency) but fail auth hard
-                if "bad credentials" in msg or "401" in msg:
-                    raise RuntimeError(f"GitHub auth failed for {operation}: {exc}") from exc
+            # Auth: fail closed immediately for bad credentials / 401 on first attempt.
+            # Other not-found / permission-like errors still get retries (eventual consistency).
+            if ("bad credentials" in msg or "401" in msg) and attempt == 1:
+                raise RuntimeError(f"GitHub auth failed for {operation}: {exc}") from exc
             if attempt >= max_attempts:
                 break
             delay = 0.5 * (2 ** (attempt - 1))

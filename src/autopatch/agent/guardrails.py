@@ -6,8 +6,8 @@ import re
 import time
 from dataclasses import dataclass
 
-from autopatch.agent.planner import Plan
 from autopatch.agent.patcher import files_in_diff
+from autopatch.agent.planner import Plan
 
 
 class GuardrailError(Exception):

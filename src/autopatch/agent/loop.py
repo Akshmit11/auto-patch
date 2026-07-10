@@ -19,7 +19,7 @@ from autopatch.agent.guardrails import (
     issue_looks_vague,
     patch_includes_tests,
 )
-from autopatch.agent.patcher import PatchResult, Patcher, combine_patch_results
+from autopatch.agent.patcher import Patcher, PatchResult, combine_patch_results
 from autopatch.agent.planner import Plan, Planner
 from autopatch.agent.test_generator import TestGenerator
 from autopatch.agent.verifier import Verifier, VerifyResult
