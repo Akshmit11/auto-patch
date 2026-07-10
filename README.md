@@ -1,10 +1,10 @@
 # AutoPatch
 
-**Autonomous coding agent that turns a GitHub issue into a sandboxed, human-reviewed patch.**
+**Autonomous coding agent that turns a GitHub issue into a sandboxed, human-reviewed draft PR.**
 
-AutoPatch ingests an issue, indexes the target repo with tree-sitter, plans a fix, generates a unified diff, and verifies tests inside Docker. Draft PRs (Day 2) are never auto-merged — a human always reviews.
+AutoPatch ingests an issue, indexes the target repo with tree-sitter, plans a fix, generates a unified diff plus tests, verifies inside Docker with capped retries, and can open a **draft** PR with plan, test results, and cost. Never auto-merges — a human always reviews.
 
-> **Status:** Day 1 complete — core loop + tools. Retry, draft PR, eval harness, and polish land on Days 2–3.
+> **Status:** Day 2 complete — retry loop, test generation, draft PRs, guardrails, trace viewer. Day 3: eval harness + polish.
 
 ## Non-goals (v1)
 
@@ -13,10 +13,13 @@ AutoPatch ingests an issue, indexes the target repo with tree-sitter, plans a fi
 - Fine-tuning models (orchestration + retrieval + tool use only)
 - Supporting every language (Python first; TypeScript is stretch)
 
-## Architecture (Day 1)
+## Architecture (Day 2)
 
 ```text
 Issue URL / local issue
+        │
+        ▼
+  Guardrails (vague precheck)
         │
         ▼
   GitHub read (MCP) ──► shallow clone / local repo
@@ -28,32 +31,38 @@ Issue URL / local issue
   Planner (LLM) ── structured plan (logged)
         │
         ▼
-  Patcher (LLM) ── unified diff only
-        │
-        ▼
-  Docker sandbox ── apply patch + pytest
-        │
-        ▼
-  Result JSON + structured JSONL trace + cost
+  ┌─ Retry loop (max_retries + 1 attempts) ─┐
+  │  Patcher → Test generator → Docker verify │
+  │  failure feedback + cost delta per try    │
+  └──────────────────┬───────────────────────┘
+                     │ success
+                     ▼
+  Optional draft PR (plan + tests + cost) ── never merge
+                     │
+                     ▼
+  Result JSON + JSONL log + HTML/terminal trace
 ```
 
-Hand-rolled **plan → act → observe** loop (no LangChain core). Tools are exposed as MCP servers (filesystem, sandbox, GitHub, codebase) and used in-process by the agent.
+Hand-rolled **plan → act → observe → retry** loop (no LangChain core). Tools are MCP servers (filesystem, sandbox, GitHub, codebase) used in-process by the agent.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full module map and guardrail table.
 
 ## Quickstart
 
 ```bash
 # Prerequisites: Python 3.11+, uv, Docker (for sandbox verify)
 uv sync --all-extras
-cp .env.example .env   # set ANTHROPIC_API_KEY (and GITHUB_TOKEN for real issues)
+cp .env.example .env   # set ANTHROPIC_API_KEY (and GITHUB_TOKEN for real issues/PRs)
 
 # Symbol index only
 uv run autopatch index demo/sample_target
 
-# Day-1 loop on the included buggy sample (needs Docker + API key)
+# Day-2 loop on the included buggy sample (needs Docker + API key)
 uv run autopatch run \
   --repo demo/sample_target \
   --title "Fix clamp() lower bound" \
-  --issue-file demo/sample_issue.md
+  --issue-file demo/sample_issue.md \
+  --html-trace
 
 # Plan + patch without Docker
 uv run autopatch run \
@@ -62,8 +71,14 @@ uv run autopatch run \
   --issue-file demo/sample_issue.md \
   --skip-sandbox
 
-# Real GitHub issue
-uv run autopatch run https://github.com/owner/repo/issues/123
+# Real GitHub issue → draft PR
+uv run autopatch run https://github.com/owner/repo/issues/123 --create-pr
+
+# Human gate: promote draft to ready-for-review (never merges)
+uv run autopatch pr ready https://github.com/owner/repo/pull/456
+
+# Trace viewer
+uv run autopatch trace .autopatch/logs/run-<id>.jsonl --html
 ```
 
 See [demo/walkthrough.md](demo/walkthrough.md) for a fuller walkthrough.
@@ -74,12 +89,12 @@ Matches `AGENTS.md` / `PRD.md` §4:
 
 ```text
 src/autopatch/
-  agent/          # plan → act → observe loop
+  agent/          # plan → act → observe → retry (+ test gen, guardrails)
   mcp_tools/      # filesystem, sandbox, GitHub, codebase (MCP)
   retrieval/      # tree-sitter symbol index
   sandbox/        # DockerRunner
   llm/            # LLMProvider (Claude default, OpenAI swap)
-  tracing/        # structured JSON logs + cost
+  tracing/        # structured JSON logs + cost + HTML/terminal viewer
 ```
 
 ## Configuration
@@ -88,11 +103,13 @@ src/autopatch/
 |---|---|
 | `ANTHROPIC_API_KEY` | Claude (default provider) |
 | `OPENAI_API_KEY` | OpenAI swap path |
-| `GITHUB_TOKEN` | Issue read / clone / (Day 2) draft PR |
+| `GITHUB_TOKEN` | Issue read / clone / draft PR / mark ready |
 | `LLM_PROVIDER` | `claude` \| `openai` |
 | `LLM_MODEL` | default `claude-sonnet-4-6` |
 | `MAX_FILES_PER_PATCH` | safety cap (default 5) |
+| `MAX_RETRIES` | sandbox failure retries after first attempt (default 3) |
 | `SANDBOX_TIMEOUT_SECONDS` | container exec timeout |
+| `RUN_TIMEOUT_SECONDS` | overall agent run timeout |
 
 ## Development
 

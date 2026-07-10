@@ -1,4 +1,4 @@
-"""Hand-rolled agent loop: plan → act → observe (retry on Day 2)."""
+"""Hand-rolled agent loop: plan → act → observe → retry."""
 
 from autopatch.agent.loop import AgentLoop, AgentResult, RunRequest
 

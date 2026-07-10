@@ -107,19 +107,22 @@ uv run ruff check .              # lint
 uv run mypy src                  # type-check
 uv run pytest                    # agent unit tests
 
-# Agent (examples; wire CLI as implementation lands)
+# Agent
 uv run autopatch run <issue-url>
+uv run autopatch run <issue-url> --create-pr
+uv run autopatch pr ready <pr-url>          # draft → ready-for-review (never merges)
+uv run autopatch trace .autopatch/logs/run-<id>.jsonl --html
 docker compose up --build
 ```
 
 ## Project Structure
 
-Prefer this layout (from PRD, slightly tightened for first-principles clarity). Adjust only if a simpler split is clearly better — do not invent parallel apps or frontend trees.
+Prefer this layout (from PRD — keep `PRD.md` §4 identical). Adjust only if a simpler split is clearly better — do not invent parallel apps or frontend trees.
 
 ```
 .
 ├── README.md
-├── ARCHITECTURE.md              # agent loop, MCP tools, retrieval (when ready)
+├── ARCHITECTURE.md              # agent loop, MCP tools, retrieval
 ├── PRD.md                       # product source of truth
 ├── AGENTS.md                    # this file
 ├── pyproject.toml
@@ -129,15 +132,17 @@ Prefer this layout (from PRD, slightly tightened for first-principles clarity). 
 ├── .github/workflows/ci.yml
 ├── src/autopatch/
 │   ├── __init__.py
-│   ├── cli.py                   # entrypoint (thin)
+│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp
 │   ├── config.py                # pydantic-settings
 │   ├── agent/
-│   │   ├── loop.py              # plan → act → observe → retry
+│   │   ├── loop.py              # plan → act → observe → retry + draft PR
 │   │   ├── planner.py
 │   │   ├── patcher.py
-│   │   └── verifier.py
+│   │   ├── test_generator.py    # issue-covering test unified diff
+│   │   ├── verifier.py
+│   │   └── guardrails.py        # vague filter, file cap, retries, deadlines
 │   ├── mcp_tools/               # MCP tool servers / wrappers
-│   │   ├── github_tool.py
+│   │   ├── github_tool.py       # issue read + draft PR + mark ready
 │   │   ├── filesystem_tool.py
 │   │   ├── sandbox_tool.py
 │   │   └── codebase_tool.py     # tree-sitter powered
@@ -148,14 +153,17 @@ Prefer this layout (from PRD, slightly tightened for first-principles clarity). 
 │   ├── llm/
 │   │   └── provider.py          # LLMProvider interface + Claude/OpenAI
 │   └── tracing/
-│       └── logger.py            # structured JSON + cost tracking
+│       ├── logger.py            # structured JSON + cost tracking
+│       └── viewer.py            # terminal + HTML trace viewer
 ├── eval/
 │   ├── issues/                  # real issue fixtures
 │   ├── run_eval.py
 │   └── results/
 ├── tests/                       # agent unit/integration tests
 └── demo/
-    └── walkthrough.md
+    ├── walkthrough.md           # steps for demo video
+    ├── sample_issue.md          # local issue text
+    └── sample_target/           # tiny buggy Python package for E2E
 ```
 
 **Structure principles:**
@@ -163,22 +171,22 @@ Prefer this layout (from PRD, slightly tightened for first-principles clarity). 
 - Keep orchestration in `agent/`; keep side effects behind MCP tools.
 - `sandbox/docker_runner.py` owns container lifecycle; agent never shells out to host for target code.
 - `llm/provider.py` is the only place provider SDKs are called.
-- `tracing/` owns JSON logs, token counts, and cost estimates.
+- `tracing/` owns JSON logs, token counts, cost estimates, and the minimal HTML/terminal trace viewer.
 - No frontend app in v1 (optional minimal static HTML trace viewer only).
 
 ## Core Pipeline (implementation order)
 
 Build in this order unless the user directs otherwise:
 
-1. Scaffold + config + logging stubs
-2. Docker sandbox can run a target repo test suite safely
-3. tree-sitter symbol index for Python
-4. MCP tools: filesystem, sandbox, GitHub read
-5. Plan → patch → test loop (no retry)
-6. Retry loop + test generation
-7. Draft PR creation + cost in description
-8. Guardrails + trace viewer
-9. Eval harness + honest metrics
+1. Scaffold + config + logging stubs ✅
+2. Docker sandbox can run a target repo test suite safely ✅
+3. tree-sitter symbol index for Python ✅
+4. MCP tools: filesystem, sandbox, GitHub read ✅
+5. Plan → patch → test loop (no retry) ✅
+6. Retry loop + test generation ✅ (Day 2)
+7. Draft PR creation + cost in description ✅ (Day 2)
+8. Guardrails + trace viewer ✅ (Day 2)
+9. Eval harness + honest metrics (Day 3)
 
 ## Guardrails (always enforce when implementing agent behavior)
 

@@ -18,7 +18,7 @@ Rules:
 - Paths in the diff must be repository-relative (e.g. src/foo.py).
 - Use --- a/path and +++ b/path headers.
 - Prefer minimal, reviewable changes.
-- Include test file changes if the plan requires them.
+- Prefer including at least one pytest that covers the issue (tests/test_*.py).
 - Do not touch more files than listed in the plan unless strictly necessary.
 """
 
@@ -167,3 +167,34 @@ def json_dumps_plan(plan: Plan) -> str:
         },
         indent=2,
     )
+
+
+def merge_unified_diffs(*diffs: str) -> str:
+    """Concatenate non-empty unified diffs into one multi-file patch text.
+
+    Git apply accepts multiple file hunks in sequence. Empty / whitespace-only
+    inputs are skipped. Does not attempt semantic conflict resolution.
+    """
+    parts: list[str] = []
+    for diff in diffs:
+        text = (diff or "").strip()
+        if not text:
+            continue
+        if not text.endswith("\n"):
+            text += "\n"
+        parts.append(text)
+    if not parts:
+        return ""
+    return "".join(parts)
+
+
+def combine_patch_results(*results: PatchResult) -> PatchResult:
+    """Merge multiple PatchResults, rejecting if any component was rejected."""
+    for result in results:
+        if result.rejected:
+            return result
+    merged_diff = merge_unified_diffs(*(r.diff for r in results))
+    if not merged_diff:
+        return PatchResult(diff="", files_touched=[], rejected=True, reject_reason="Empty combined patch")
+    touched = files_in_diff(merged_diff)
+    return PatchResult(diff=merged_diff, files_touched=touched)

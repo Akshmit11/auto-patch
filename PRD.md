@@ -113,15 +113,17 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 ├── .github/workflows/ci.yml
 ├── src/autopatch/
 │   ├── __init__.py
-│   ├── cli.py                   # entrypoint (thin)
+│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp
 │   ├── config.py                # pydantic-settings
 │   ├── agent/
-│   │   ├── loop.py              # plan → act → observe → retry
+│   │   ├── loop.py              # plan → act → observe → retry + draft PR
 │   │   ├── planner.py
 │   │   ├── patcher.py
-│   │   └── verifier.py
+│   │   ├── test_generator.py    # issue-covering test unified diff
+│   │   ├── verifier.py
+│   │   └── guardrails.py        # vague filter, file cap, retries, deadlines
 │   ├── mcp_tools/               # MCP tool servers / wrappers
-│   │   ├── github_tool.py
+│   │   ├── github_tool.py       # issue read + draft PR + mark ready
 │   │   ├── filesystem_tool.py
 │   │   ├── sandbox_tool.py
 │   │   └── codebase_tool.py     # tree-sitter powered
@@ -132,7 +134,8 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 │   ├── llm/
 │   │   └── provider.py          # LLMProvider interface + Claude/OpenAI
 │   └── tracing/
-│       └── logger.py            # structured JSON + cost tracking
+│       ├── logger.py            # structured JSON + cost tracking
+│       └── viewer.py            # terminal + HTML trace viewer
 ├── eval/
 │   ├── issues/                  # real issue fixtures
 │   ├── run_eval.py
@@ -140,8 +143,8 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 ├── tests/                       # agent unit/integration tests
 └── demo/
     ├── walkthrough.md           # steps for demo video
-    ├── sample_issue.md          # Day-1 local issue text
-    └── sample_target/           # tiny buggy Python package for Day-1 E2E
+    ├── sample_issue.md          # local issue text
+    └── sample_target/           # tiny buggy Python package for E2E
 ```
 
 **Structure principles:**
@@ -149,7 +152,7 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 - Keep orchestration in `agent/`; keep side effects behind MCP tools.
 - `sandbox/docker_runner.py` owns container lifecycle; agent never shells out to host for target code.
 - `llm/provider.py` is the only place provider SDKs are called.
-- `tracing/` owns JSON logs, token counts, and cost estimates.
+- `tracing/` owns JSON logs, token counts, cost estimates, and the minimal HTML/terminal trace viewer.
 - No frontend app in v1 (optional minimal static HTML trace viewer only).
 
 ---
@@ -162,12 +165,13 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 - MCP tool wrappers: filesystem, sandbox exec, GitHub read (+ codebase).
 - Basic plan → patch → test loop (no retry yet), demo target at `demo/sample_target`.
 
-**Day 2 — Robustness + PR flow**
-- Add retry/error-recovery loop with capped attempts.
-- Add test generation step.
-- GitHub PR creation (draft PRs, proper description template).
-- Structured logging + trace viewer.
-- Guardrails (file-count limits, timeouts, clarification-needed detection).
+**Day 2 — Robustness + PR flow** ✅ (implemented)
+- Retry/error-recovery loop with capped attempts (`MAX_RETRIES`, default 3) + cost delta logging.
+- Test generation step (`agent/test_generator.py`) when the code patch lacks tests.
+- GitHub draft PR creation (`--create-pr`) with plan, test results, cost; never auto-merge.
+- Human gate: `autopatch pr ready <pr-url>` promotes draft → ready-for-review.
+- Structured logging + terminal/HTML trace viewer (`autopatch trace`, `tracing/viewer.py`).
+- Guardrails: vague-issue precheck + planner flag, max files per patch, sandbox + overall run timeouts.
 
 **Day 3 — Eval, polish, ship**
 - Build eval set: 15-20 real closed issues from small OSS repos where you can diff against the real merged fix.

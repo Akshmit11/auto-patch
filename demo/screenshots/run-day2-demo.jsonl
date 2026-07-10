@@ -1,0 +1,8 @@
+{"ts": "2026-07-10T12:47:36.739353+00:00", "run_id": "day2-demo", "level": "info", "event": "run_started", "message": "plan->patch->test->retry", "data": {"max_retries": 3, "create_pr": true}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "index_built", "message": "8 symbols", "data": {"symbol_count": 8}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "attempt_started", "message": "attempt 1/4", "data": {"attempt": 1, "max_attempts": 4}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "retry", "message": "test_clamp_below_low failed", "data": {"attempt": 1, "cost_delta_usd": 0.01}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "attempt_started", "message": "attempt 2/4", "data": {"attempt": 2, "max_attempts": 4}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "attempt_succeeded", "message": "attempt 2 passed", "data": {"attempt": 2}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "tool_call", "message": "github_create_draft_pr", "data": {"tool": "github_create_draft_pr", "success": true}}
+{"ts": "2026-07-10T12:47:36.740352+00:00", "run_id": "day2-demo", "level": "info", "event": "run_finished", "message": "completed", "data": {"status": "completed", "usage": {"input_tokens": 0, "output_tokens": 0, "model": "", "cost_usd": 0.0}}}

@@ -1,0 +1,49 @@
+PS D:\Builds\personal\auto-patch> uv run autopatch --help
+# Commands: run | trace | pr | index | mcp
+# run: plan → patch → test gen → sandbox → capped retries → optional draft PR
+
+PS D:\Builds\personal\auto-patch> uv run autopatch run --help
+  --create-pr          After success, open a draft PR (never auto-merges)
+  --html-trace         Write HTML trace viewer next to JSONL log
+  --skip-sandbox       Dev dry-run (no Docker)
+
+PS D:\Builds\personal\auto-patch> uv run autopatch pr --help
+  ready <pr-url>       Promote draft → ready-for-review (never merges)
+
+PS D:\Builds\personal\auto-patch> uv run autopatch trace --help
+  --html               Terminal + HTML structured trace viewer
+
+PS D:\Builds\personal\auto-patch> uv run pytest tests/test_guardrails.py tests/test_pr_body.py tests/test_tracing.py tests/test_viewer.py -q
+...............                                                          [100%]
+15 passed in 0.70s
+
+=== Guardrail: vague issue precheck ===
+Issue title 'fix something' is vague and the body is too short (6 chars).
+Add expected vs actual behavior, steps, or a failing test.
+
+=== Guardrail: max retries (default 3) ===
+max_retries=3 => max_attempts=4
+reject: Exceeded max attempts (4 = 1 + 3 retries)
+
+=== Draft PR body (excerpt) ===
+## AutoPatch draft PR
+> **Human review required.** This PR was opened as a **draft** and will never auto-merge.
+### Summary
+Fix clamp() so values below low return low.
+### Test results
+- Status: **passed**
+- Attempts: 2
+### Cost & run
+- Estimated LLM cost: **$0.0421**
+
+PS D:\Builds\personal\auto-patch> uv run autopatch trace demo/screenshots/run-day2-demo.jsonl
+AutoPatch trace  run_id=day2-demo  status=completed
+events=8  model_calls=0  tool_calls=1  retries=1  cost=$0.0000
+------------------------------------------------------------------------
+info  run_started        plan->patch->test->retry
+info  attempt_started    attempt 1/4
+info  retry              test_clamp_below_low failed  attempt=1 delta=$0.01
+info  attempt_started    attempt 2/4
+info  attempt_succeeded  attempt 2 passed
+info  tool_call          github_create_draft_pr ok=True
+info  run_finished       completed

@@ -66,3 +66,44 @@ def test_apply_unified_diff_host_safe(tmp_path: Path) -> None:
 def test_extract_diff_raises_without_headers() -> None:
     with pytest.raises(ValueError):
         extract_unified_diff("no diff here, just prose")
+
+
+def test_merge_unified_diffs() -> None:
+    from autopatch.agent.patcher import combine_patch_results, merge_unified_diffs
+    from autopatch.agent.patcher import PatchResult
+
+    a = """\
+--- a/a.py
++++ b/a.py
+@@ -1 +1 @@
+-x
++y
+"""
+    b = """\
+--- a/tests/test_a.py
++++ b/tests/test_a.py
+@@ -1 +1 @@
+-old
++new
+"""
+    merged = merge_unified_diffs(a, b)
+    assert "a/a.py" in merged or "+++ b/a.py" in merged
+    assert "tests/test_a.py" in merged
+    assert files_in_diff(merged) == ["a.py", "tests/test_a.py"]
+
+    combined = combine_patch_results(
+        PatchResult(diff=a, files_touched=["a.py"]),
+        PatchResult(diff=b, files_touched=["tests/test_a.py"]),
+    )
+    assert not combined.rejected
+    assert set(combined.files_touched) == {"a.py", "tests/test_a.py"}
+
+
+def test_combine_rejects_if_any_rejected() -> None:
+    from autopatch.agent.patcher import PatchResult, combine_patch_results
+
+    good = PatchResult(diff="--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-x\n+y\n", files_touched=["a.py"])
+    bad = PatchResult(diff="", files_touched=[], rejected=True, reject_reason="nope")
+    combined = combine_patch_results(good, bad)
+    assert combined.rejected
+    assert combined.reject_reason == "nope"
