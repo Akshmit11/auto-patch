@@ -1,0 +1,15 @@
+{
+  "id": "local_percent",
+  "source": "local",
+  "title": "Fix percentage() scale (0–100)",
+  "body": "## Problem\n\nIn `percent_bug/stats.py`, `percentage(part, whole)` should return a value on the 0–100 scale.\n\n`percentage(1, 4)` should equal `25.0`, but the implementation multiplies by `1` instead of `100`, so it returns `0.25`.\n\n## Expected\n\n`return (part / whole) * 100` when `whole != 0`. Keep raising `ZeroDivisionError` when whole is 0.\n\n## Acceptance\n\nAll tests in `tests/test_stats.py` pass.",
+  "repo_path": "eval/targets/percent_bug",
+  "test_command": "python -m pytest -q",
+  "expected_diff_file": "eval/issues/expected/local_percent.diff",
+  "expected_files": ["percent_bug/stats.py"],
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Local arithmetic scale bug for offline eval.",
+  "tags": ["local", "python", "smoke"],
+  "enabled": true
+}

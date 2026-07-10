@@ -1,0 +1,12 @@
+{
+  "id": "gh_jinja_1400",
+  "source": "github",
+  "title": "Markup.__init__ causes error",
+  "issue_url": "https://github.com/pallets/jinja/issues/1400",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Jinja Markup constructor edge case.",
+  "tags": ["github", "jinja", "bug"],
+  "enabled": true
+}

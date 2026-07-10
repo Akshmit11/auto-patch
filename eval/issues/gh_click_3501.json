@@ -1,0 +1,14 @@
+{
+  "id": "gh_click_3501",
+  "source": "github",
+  "title": "isolated_filesystem() is not thread safe",
+  "issue_url": "https://github.com/pallets/click/issues/3501",
+  "expected_pr_url": "https://github.com/pallets/click/pull/3503",
+  "expected_files": ["src/click/testing.py"],
+  "test_command": "python -m pytest tests/test_testing.py -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Thread-safety fix in Click testing helpers. Multi-file risk; guardrails may limit scope.",
+  "tags": ["github", "click", "concurrency"],
+  "enabled": true
+}

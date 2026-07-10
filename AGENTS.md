@@ -85,7 +85,7 @@ Do not continue from remembered project context alone. Re-read current files bec
 - If a module, dependency, abstraction, or file is not needed for a working feature, do not add it.
 - Prefer unified diffs over full rewrites; keyword/symbol retrieval before embeddings; hand-rolled loop before frameworks.
 - Treat complexity as a cost. Add structure only when it clearly improves correctness, safety, or required product capability.
-- Scope by day plan in `PRD.md` (Day 1 core loop → Day 2 robustness/PR → Day 3 eval/polish). Do not silently expand into stretch goals.
+- Scope by day plan in `PRD.md` (Day 1–3 core complete). Stretch goals only with explicit approval.
 
 ## Testing and Verification
 
@@ -112,6 +112,8 @@ uv run autopatch run <issue-url>
 uv run autopatch run <issue-url> --create-pr
 uv run autopatch pr ready <pr-url>          # draft → ready-for-review (never merges)
 uv run autopatch trace .autopatch/logs/run-<id>.jsonl --html
+uv run autopatch eval --list
+uv run python eval/run_eval.py --local-only
 docker compose up --build
 ```
 
@@ -132,7 +134,7 @@ Prefer this layout (from PRD — keep `PRD.md` §4 identical). Adjust only if a 
 ├── .github/workflows/ci.yml
 ├── src/autopatch/
 │   ├── __init__.py
-│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp
+│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp, eval
 │   ├── config.py                # pydantic-settings
 │   ├── agent/
 │   │   ├── loop.py              # plan → act → observe → retry + draft PR
@@ -156,9 +158,12 @@ Prefer this layout (from PRD — keep `PRD.md` §4 identical). Adjust only if a 
 │       ├── logger.py            # structured JSON + cost tracking
 │       └── viewer.py            # terminal + HTML trace viewer
 ├── eval/
-│   ├── issues/                  # real issue fixtures
-│   ├── run_eval.py
-│   └── results/
+│   ├── issues/                  # fixture JSON + expected/*.diff goldens
+│   ├── targets/                 # local buggy packages (offline smoke)
+│   ├── fixtures.py
+│   ├── scoring.py
+│   ├── run_eval.py              # batch harness CLI
+│   └── results/                 # results.json + report.md
 ├── tests/                       # agent unit/integration tests
 └── demo/
     ├── walkthrough.md           # steps for demo video
@@ -186,7 +191,7 @@ Build in this order unless the user directs otherwise:
 6. Retry loop + test generation ✅ (Day 2)
 7. Draft PR creation + cost in description ✅ (Day 2)
 8. Guardrails + trace viewer ✅ (Day 2)
-9. Eval harness + honest metrics (Day 3)
+9. Eval harness + honest metrics (Day 3) ✅
 
 ## Guardrails (always enforce when implementing agent behavior)
 

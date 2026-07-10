@@ -1,0 +1,13 @@
+{
+  "id": "gh_attrs_1327",
+  "source": "github",
+  "title": "Upgrade to 24.1.0 breaks assignment to fields with chained converters",
+  "issue_url": "https://github.com/python-attrs/attrs/issues/1327",
+  "expected_pr_url": "https://github.com/python-attrs/attrs/pull/1328",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "attrs 24.1 regression with chained converters.",
+  "tags": ["github", "attrs", "regression"],
+  "enabled": true
+}

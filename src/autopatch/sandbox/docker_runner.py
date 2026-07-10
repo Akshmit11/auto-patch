@@ -135,7 +135,9 @@ class DockerRunner:
 
             stdout_bytes = container.logs(stdout=True, stderr=False)
             stderr_bytes = container.logs(stdout=False, stderr=True)
-            exit_code = int(result.get("StatusCode", 1)) if isinstance(result, dict) else int(result)
+            exit_code = (
+                int(result.get("StatusCode", 1)) if isinstance(result, dict) else int(result)
+            )
             if timed_out:
                 exit_code = 124
             exec_result = ExecResult(
@@ -187,8 +189,7 @@ class DockerRunner:
         # python:3.11-slim lacks git by default — install git for apply reliability.
         install_and_apply = (
             "export DEBIAN_FRONTEND=noninteractive; "
-            "apt-get update -qq && apt-get install -y -qq git patch >/dev/null; "
-            + script
+            "apt-get update -qq && apt-get install -y -qq git patch >/dev/null; " + script
         )
         return self.run_command(
             workspace,
@@ -299,7 +300,9 @@ def _apply_unified_diff(workspace: Path, patch_text: str) -> None:
             old_start, old_count, new_start, new_count = _parse_hunk_header(header)
             i += 1
             hunk_lines: list[str] = []
-            while i < len(lines) and not lines[i].startswith("--- ") and not lines[i].startswith("@@"):
+            while (
+                i < len(lines) and not lines[i].startswith("--- ") and not lines[i].startswith("@@")
+            ):
                 # file headers for next file break
                 if lines[i].startswith("diff "):
                     break
@@ -394,9 +397,7 @@ def _apply_hunks(
                 if found is not None:
                     break
             if found is None:
-                raise ValueError(
-                    f"Failed to apply hunk at line {old_start}: context mismatch"
-                )
+                raise ValueError(f"Failed to apply hunk at line {old_start}: context mismatch")
             start_idx = found
             end_idx = start_idx + len(old_segment)
         result[start_idx:end_idx] = new_segment

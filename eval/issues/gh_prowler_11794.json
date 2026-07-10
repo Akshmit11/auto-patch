@@ -1,0 +1,12 @@
+{
+  "id": "gh_prowler_11794",
+  "source": "github",
+  "title": "[New Check]: Ensure AMI block public access is enabled at the account level",
+  "issue_url": "https://github.com/prowler-cloud/prowler/issues/11794",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "New security check patterned after an existing EBS snapshot check — multi-file feature.",
+  "tags": ["github", "prowler", "aws", "good-first-issue"],
+  "enabled": true
+}

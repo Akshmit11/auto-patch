@@ -21,9 +21,7 @@ class FilesystemTools:
         try:
             candidate.relative_to(self.workspace)
         except ValueError as exc:
-            raise PermissionError(
-                f"Path escapes workspace: {rel_path} -> {candidate}"
-            ) from exc
+            raise PermissionError(f"Path escapes workspace: {rel_path} -> {candidate}") from exc
         return candidate
 
     def read_file(self, path: str, *, max_chars: int = 100_000) -> str:

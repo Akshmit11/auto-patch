@@ -13,7 +13,9 @@ from autopatch.tracing.logger import StructuredLogger
 class SandboxTools:
     """Thin MCP-facing wrapper around DockerRunner."""
 
-    def __init__(self, runner: DockerRunner, workspace: Path, logger: StructuredLogger | None = None) -> None:
+    def __init__(
+        self, runner: DockerRunner, workspace: Path, logger: StructuredLogger | None = None
+    ) -> None:
         self.runner = runner
         self.workspace = workspace.resolve()
         self.logger = logger

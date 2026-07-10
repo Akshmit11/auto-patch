@@ -94,7 +94,9 @@ class ClaudeProvider(LLMProvider):
         api_messages: list[dict[str, str]] = []
         for msg in messages:
             if msg.role == "system":
-                system_text = f"{system_text}\n{msg.content}".strip() if system_text else msg.content
+                system_text = (
+                    f"{system_text}\n{msg.content}".strip() if system_text else msg.content
+                )
                 continue
             if msg.role not in {"user", "assistant"}:
                 raise ValueError(f"Unsupported role for Claude: {msg.role}")

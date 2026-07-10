@@ -1,0 +1,13 @@
+{
+  "id": "gh_click_3458",
+  "source": "github",
+  "title": "get_parameter_source() returns None in 8.4.0",
+  "issue_url": "https://github.com/pallets/click/issues/3458",
+  "expected_pr_url": "https://github.com/pallets/click/pull/3460",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Regression around ParameterSource tracking in Click 8.4.",
+  "tags": ["github", "click", "regression"],
+  "enabled": true
+}

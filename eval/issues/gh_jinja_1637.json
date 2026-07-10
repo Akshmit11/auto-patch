@@ -1,0 +1,12 @@
+{
+  "id": "gh_jinja_1637",
+  "source": "github",
+  "title": "Template filename on Windows may have altsep",
+  "issue_url": "https://github.com/pallets/jinja/issues/1637",
+  "test_command": "python -m pytest -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Jinja path separator normalization on Windows.",
+  "tags": ["github", "jinja", "windows", "bug"],
+  "enabled": true
+}

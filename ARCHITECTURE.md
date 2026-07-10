@@ -10,7 +10,7 @@
 6. **Explainability** — every tool call, model call, retry, and outcome is structured JSON (JSONL per run) + HTML/terminal trace viewer.
 7. **Human review gate** — draft PRs only; never auto-merge; explicit promote to ready-for-review.
 
-## Day 2 pipeline
+## Day 3 pipeline (full product loop)
 
 ```
 ┌─────────────┐   ┌──────────────┐   ┌────────────────┐
@@ -45,16 +45,20 @@
                                              │
                       ┌──────────────────────▼────────┐
                       │ JSONL log + HTML/terminal view │
+                      └──────────────────────┬────────┘
+                                             │
+                      ┌──────────────────────▼────────┐
+                      │ Eval harness (batch fixtures)  │
+                      │ resolve rate · cost · time     │
+                      │ edit distance vs golden diffs  │
                       └───────────────────────────────┘
 ```
-
-Day 3 adds: eval harness + metrics + polish.
 
 ## Module map
 
 | Module | Responsibility |
 |---|---|
-| `cli.py` | Thin Typer entrypoint (`run`, `trace`, `pr`, `index`, `mcp`) |
+| `cli.py` | Thin Typer entrypoint (`run`, `trace`, `pr`, `index`, `mcp`, `eval`) |
 | `config.py` | `pydantic-settings` from `.env` |
 | `agent/loop.py` | Orchestration + retry + draft PR |
 | `agent/planner.py` | Structured plan |
@@ -68,6 +72,10 @@ Day 3 adds: eval harness + metrics + polish.
 | `llm/provider.py` | Provider interface + Claude/OpenAI |
 | `tracing/logger.py` | JSONL + token/cost |
 | `tracing/viewer.py` | Terminal + HTML trace viewer |
+| `eval/run_eval.py` | Batch harness: fixtures → agent → scores → report |
+| `eval/scoring.py` | Resolve rate, cost, time, edit distance (pure) |
+| `eval/fixtures.py` | Load/validate `eval/issues/*.json` |
+| `eval/targets/*` | Local buggy packages for offline smoke eval |
 
 ## MCP tool surface
 
@@ -121,3 +129,18 @@ uv run autopatch trace .autopatch/logs/run-<id>.jsonl --html
 ```
 
 Self-contained HTML (no CDN). Terminal view prints a compact timeline of model/tool/retry events.
+
+## Eval harness (Day 3)
+
+```bash
+uv run autopatch eval --list
+uv run python eval/run_eval.py --local-only          # 5 local smoke fixtures
+uv run python eval/run_eval.py                       # full set (needs GITHUB_TOKEN)
+uv run python eval/run_eval.py --score-only eval/results/results.json
+```
+
+**Fixture schema** (`eval/issues/<id>.json`): `id`, `source` (`local`|`github`), local `repo_path` + issue body, or `issue_url`, optional `expected_diff` / `expected_diff_file` / `expected_files`, `test_command`, tags.
+
+**Scoring:** resolved (sandbox pass), attempts, cost USD, wall-clock time, optional edit distance vs golden unified diff, whether the patch touched tests. Outputs: `eval/results/results.json` + `report.md`.
+
+**Honesty:** checked-in `report.md` starts as an inventory baseline — live resolve rates come from real runs, not invented numbers.

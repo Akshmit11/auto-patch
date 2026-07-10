@@ -1,0 +1,14 @@
+{
+  "id": "gh_rich_3021",
+  "source": "github",
+  "title": "html tag is in wrong spot in template used by export_html()",
+  "issue_url": "https://github.com/Textualize/rich/issues/3021",
+  "expected_pr_url": "https://github.com/Textualize/rich/pull/3022",
+  "expected_files": ["rich/console.py"],
+  "test_command": "python -m pytest tests/test_export.py -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Rich export_html template markup fix.",
+  "tags": ["github", "rich", "bug"],
+  "enabled": true
+}

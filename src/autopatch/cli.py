@@ -261,6 +261,94 @@ def index_cmd(
     typer.echo(json.dumps({"symbol_count": count, "sample": symbols}, indent=2))
 
 
+@app.command("eval")
+def eval_cmd(
+    list_fixtures: bool = typer.Option(
+        False,
+        "--list",
+        help="List fixtures and exit (no agent runs).",
+    ),
+    local_only: bool = typer.Option(
+        False,
+        "--local-only",
+        help="Only local eval targets under eval/targets/.",
+    ),
+    github_only: bool = typer.Option(
+        False,
+        "--github-only",
+        help="Only real GitHub issue fixtures.",
+    ),
+    only: str | None = typer.Option(
+        None,
+        "--only",
+        help="Comma-separated fixture ids.",
+    ),
+    limit: int | None = typer.Option(None, "--limit", help="Max fixtures to run."),
+    skip_sandbox: bool = typer.Option(
+        False,
+        "--skip-sandbox",
+        help="Plan+patch only (no Docker). Resolve = patch produced.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Load fixtures and write skipped rows (no agent).",
+    ),
+    score_only: Path | None = typer.Option(
+        None,
+        "--score-only",
+        help="Re-aggregate an existing results.json into report.md.",
+    ),
+    results_dir: Path = typer.Option(
+        Path("eval/results"),
+        "--results-dir",
+        help="Output directory for results.json + report.md.",
+    ),
+) -> None:
+    """Run the Day-3 eval harness (resolve rate, cost, time, edit distance)."""
+    import sys
+    from pathlib import Path as _Path
+
+    # eval/ is a repo-root harness (not installed as a package). Prefer CWD, then source tree.
+    candidates = [
+        _Path.cwd() / "eval",
+        _Path(__file__).resolve().parents[2] / "eval",
+    ]
+    eval_dir = next((p for p in candidates if (p / "run_eval.py").is_file()), None)
+    if eval_dir is None:
+        typer.secho(
+            "Could not find eval/run_eval.py (run from the AutoPatch repo root).",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if str(eval_dir) not in sys.path:
+        sys.path.insert(0, str(eval_dir))
+
+    from run_eval import main as eval_main  # type: ignore[import-not-found]
+
+    argv: list[str] = ["--results-dir", str(results_dir)]
+    if list_fixtures:
+        argv.append("--list")
+    if local_only:
+        argv.append("--local-only")
+    if github_only:
+        argv.append("--github-only")
+    if only:
+        argv.extend(["--only", only])
+    if limit is not None:
+        argv.extend(["--limit", str(limit)])
+    if skip_sandbox:
+        argv.append("--skip-sandbox")
+    if dry_run:
+        argv.append("--dry-run")
+    if score_only is not None:
+        argv.extend(["--score-only", str(score_only)])
+
+    code = eval_main(argv)
+    raise typer.Exit(code=code)
+
+
 @app.command("mcp")
 def mcp_cmd(
     server: str = typer.Argument(

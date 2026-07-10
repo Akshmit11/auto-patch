@@ -1,0 +1,36 @@
+PS D:\Builds\personal\auto-patch> uv run autopatch eval --list
+... (fixture JSON for local + github issues) ...
+23 fixture(s)
+
+PS D:\Builds\personal\auto-patch> uv run pytest tests/test_eval_harness.py -q
+............                                                             [100%]
+12 passed in 0.18s
+
+PS D:\Builds\personal\auto-patch> uv run python eval/run_eval.py --dry-run --local-only
+[1/5] local_clamp (local) ...
+  -> skip attempts=0 cost=$0.0000 time=0.0s
+[2/5] local_demo_sample (local) ...
+  -> skip attempts=0 cost=$0.0000 time=0.0s
+[3/5] local_is_even (local) ...
+  -> skip attempts=0 cost=$0.0000 time=0.0s
+[4/5] local_percent (local) ...
+  -> skip attempts=0 cost=$0.0000 time=0.0s
+[5/5] local_reverse_words (local) ...
+  -> skip attempts=0 cost=$0.0000 time=0.0s
+
+# AutoPatch Eval Report
+| Fixtures total | 5 |
+| Ran | 0 |
+| Skipped | 5 |
+| Resolve rate | 0.0% |   # dry-run — honest inventory, not inflated
+
+Wrote eval/results/results.json
+Wrote eval/results/report.md
+
+PS D:\Builds\personal\auto-patch> uv run ruff check . ; uv run mypy src ; uv run pytest -q
+All checks passed!
+Success: no issues found in 24 source files
+.............................................                            [100%]
+45 passed in 0.84s
+
+# Day 3 — eval harness · 23 fixtures · golden diffs · honest metrics · ship

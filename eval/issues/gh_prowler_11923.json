@@ -1,0 +1,12 @@
+{
+  "id": "gh_prowler_11923",
+  "source": "github",
+  "title": "[New Check]: Ensure Azure Function Apps redirect HTTP to HTTPS",
+  "issue_url": "https://github.com/prowler-cloud/prowler/issues/11923",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Mirror existing Web App HTTPS check for Function Apps.",
+  "tags": ["github", "prowler", "azure", "good-first-issue"],
+  "enabled": true
+}

@@ -1,0 +1,13 @@
+{
+  "id": "gh_attrs_1348",
+  "source": "github",
+  "title": "Error when using converters.optional and converters.pipe together",
+  "issue_url": "https://github.com/python-attrs/attrs/issues/1348",
+  "expected_pr_url": "https://github.com/python-attrs/attrs/pull/1349",
+  "test_command": "python -m pytest tests/test_converters.py -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "attrs converter composition bug; small library, good agent target.",
+  "tags": ["github", "attrs", "bug"],
+  "enabled": true
+}

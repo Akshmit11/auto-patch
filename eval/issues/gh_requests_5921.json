@@ -1,0 +1,12 @@
+{
+  "id": "gh_requests_5921",
+  "source": "github",
+  "title": "requests should ignore REQUESTS_CA_BUNDLE when session.verify is False",
+  "issue_url": "https://github.com/psf/requests/issues/5921",
+  "test_command": "python -m pytest tests/test_requests.py -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Env-var vs explicit verify=False interaction in Requests.",
+  "tags": ["github", "requests", "tls", "bug"],
+  "enabled": true
+}

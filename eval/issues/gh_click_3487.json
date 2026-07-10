@@ -1,0 +1,14 @@
+{
+  "id": "gh_click_3487",
+  "source": "github",
+  "title": "Echoing empty bytes or bytearray raises TypeError",
+  "issue_url": "https://github.com/pallets/click/issues/3487",
+  "expected_pr_url": "https://github.com/pallets/click/pull/3488",
+  "expected_files": ["src/click/utils.py", "tests/test_utils.py"],
+  "test_command": "python -m pytest tests/test_utils.py -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Real closed Click bug: empty bytes/bytearray echo path. Compare agent patch to merged PR when annotated.",
+  "tags": ["github", "click", "pallets", "bug"],
+  "enabled": true
+}

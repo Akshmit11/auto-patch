@@ -1,0 +1,12 @@
+{
+  "id": "gh_pydantic_13318",
+  "source": "github",
+  "title": "JSON schema ignores pathlib.WindowsPath defaults",
+  "issue_url": "https://github.com/pydantic/pydantic/issues/13318",
+  "test_command": "python -m pytest tests/test_json_schema.py -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Pydantic JSON schema default serialization for WindowsPath.",
+  "tags": ["github", "pydantic", "schema"],
+  "enabled": true
+}

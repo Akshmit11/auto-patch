@@ -1,0 +1,12 @@
+{
+  "id": "gh_pydantic_13356",
+  "source": "github",
+  "title": "@computed_field(deprecated=...) doesn't override @deprecated(...)",
+  "issue_url": "https://github.com/pydantic/pydantic/issues/13356",
+  "test_command": "python -m pytest -q",
+  "difficulty": "hard",
+  "language": "python",
+  "notes": "Decorator interaction in pydantic computed_field — higher difficulty.",
+  "tags": ["github", "pydantic", "decorators"],
+  "enabled": true
+}

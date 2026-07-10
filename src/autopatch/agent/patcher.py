@@ -107,9 +107,7 @@ class Patcher:
         if failure_feedback:
             sections.append(f"## Previous attempt failed\n{failure_feedback}")
 
-        sections.append(
-            f"\nGenerate a unified diff touching at most {self.max_files} files."
-        )
+        sections.append(f"\nGenerate a unified diff touching at most {self.max_files} files.")
         response = self.provider.complete(
             [LLMMessage(role="user", content="\n\n".join(sections))],
             purpose="patch",
@@ -131,9 +129,8 @@ class Patcher:
 
         touched = files_in_diff(diff)
         if len(touched) > self.max_files:
-            reason = (
-                f"Patch touches {len(touched)} files (cap is {self.max_files}): "
-                + ", ".join(touched)
+            reason = f"Patch touches {len(touched)} files (cap is {self.max_files}): " + ", ".join(
+                touched
             )
             result = PatchResult(
                 diff=diff,
@@ -142,7 +139,9 @@ class Patcher:
                 reject_reason=reason,
             )
             if self.logger:
-                self.logger.log("patch_rejected", message=reason, level="error", data={"files": touched})
+                self.logger.log(
+                    "patch_rejected", message=reason, level="error", data={"files": touched}
+                )
             return result
 
         result = PatchResult(diff=diff, files_touched=touched)
@@ -195,6 +194,8 @@ def combine_patch_results(*results: PatchResult) -> PatchResult:
             return result
     merged_diff = merge_unified_diffs(*(r.diff for r in results))
     if not merged_diff:
-        return PatchResult(diff="", files_touched=[], rejected=True, reject_reason="Empty combined patch")
+        return PatchResult(
+            diff="", files_touched=[], rejected=True, reject_reason="Empty combined patch"
+        )
     touched = files_in_diff(merged_diff)
     return PatchResult(diff=merged_diff, files_touched=touched)

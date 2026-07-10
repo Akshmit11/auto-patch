@@ -46,7 +46,12 @@ packages = ["src/autopatch"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests"]
+src = ["src", "tests", "eval"]
+extend-exclude = [
+    ".agents",
+    ".autopatch",
+    "demo/screenshots",
+]
 
 [tool.ruff.lint]
 select = [

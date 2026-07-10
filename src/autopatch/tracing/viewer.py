@@ -39,7 +39,8 @@ def summarize_trace(events: list[dict[str, Any]]) -> dict[str, Any]:
         et = str(ev.get("event") or "")
         level = str(ev.get("level") or "info")
         levels[level] = levels.get(level, 0) + 1
-        data = ev.get("data") if isinstance(ev.get("data"), dict) else {}
+        raw_data = ev.get("data")
+        data: dict[str, Any] = raw_data if isinstance(raw_data, dict) else {}
         if et == "model_call":
             model_calls += 1
             if isinstance(data.get("run_cost_usd"), (int, float)):
@@ -52,7 +53,8 @@ def summarize_trace(events: list[dict[str, Any]]) -> dict[str, Any]:
             retries += 1
         elif et == "run_finished":
             status = str(data.get("status") or ev.get("message") or status)
-            usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+            raw_usage = data.get("usage")
+            usage: dict[str, Any] = raw_usage if isinstance(raw_usage, dict) else {}
             if isinstance(usage.get("cost_usd"), (int, float)):
                 cost = float(usage["cost_usd"])
     return {
@@ -85,7 +87,8 @@ def format_terminal(events: list[dict[str, Any]], *, max_events: int = 200) -> s
         level = str(ev.get("level") or "info")
         et = str(ev.get("event") or "")
         msg = str(ev.get("message") or "")
-        data = ev.get("data") if isinstance(ev.get("data"), dict) else {}
+        raw_data = ev.get("data")
+        data: dict[str, Any] = raw_data if isinstance(raw_data, dict) else {}
         extra = ""
         if et == "model_call":
             extra = (

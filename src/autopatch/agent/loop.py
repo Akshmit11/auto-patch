@@ -404,9 +404,7 @@ class AgentLoop:
                     )
                 )
                 self._log_retry(attempt, reason, cost_before)
-                failure_feedback = (
-                    f"Attempt {attempt} failed sandbox verification.\n\n{reason}"
-                )
+                failure_feedback = f"Attempt {attempt} failed sandbox verification.\n\n{reason}"
 
             self.logger.finish(status="tests_failed")
             return AgentResult(

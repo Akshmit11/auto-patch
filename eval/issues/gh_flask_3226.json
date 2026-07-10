@@ -1,0 +1,13 @@
+{
+  "id": "gh_flask_3226",
+  "source": "github",
+  "title": "unused import: werkzeug.datastructures.Range",
+  "issue_url": "https://github.com/pallets/flask/issues/3226",
+  "expected_pr_url": "https://github.com/pallets/flask/pull/3228",
+  "test_command": "python -m pytest -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Tiny cleanup issue; useful for lower-bound agent capability check.",
+  "tags": ["github", "flask", "cleanup"],
+  "enabled": true
+}

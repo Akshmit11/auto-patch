@@ -1,0 +1,9 @@
+--- a/even_bug/numbers.py
++++ b/even_bug/numbers.py
+@@ -6,5 +6,5 @@ def is_even(n: int) -> bool:
+     BUG: returns True for odd numbers instead of even.
+     """
+-    # BUG: should be (n % 2 == 0)
+-    return n % 2 == 1
++    # Fixed
++    return n % 2 == 0

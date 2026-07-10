@@ -1,0 +1,9 @@
+--- a/clamp_bug/mathutil.py
++++ b/clamp_bug/mathutil.py
+@@ -8,5 +8,5 @@ def clamp(value: float, low: float, high: float) -> float:
+     if high < low:
+         low, high = high, low
+-    # BUG: should be max(low, min(high, value))
+-    return min(low, max(high, value))
++    # Fixed: clamp into [low, high]
++    return max(low, min(high, value))

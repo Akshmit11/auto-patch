@@ -1,0 +1,12 @@
+{
+  "id": "gh_toqito_1801",
+  "source": "github",
+  "title": "docs: add an Examples section to channel_exclusion",
+  "issue_url": "https://github.com/vprusso/toqito/issues/1801",
+  "test_command": "python -m pytest -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Docstring-only good-first-issue; agent may succeed without sandbox test changes.",
+  "tags": ["github", "toqito", "docs", "good-first-issue"],
+  "enabled": true
+}

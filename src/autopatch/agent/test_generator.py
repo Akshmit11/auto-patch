@@ -64,9 +64,7 @@ class TestGenerator:
         if failure_feedback:
             sections.append(f"## Previous attempt failed\n{failure_feedback}")
 
-        sections.append(
-            "\nGenerate a unified diff that adds or updates tests covering this issue."
-        )
+        sections.append("\nGenerate a unified diff that adds or updates tests covering this issue.")
         response = self.provider.complete(
             [LLMMessage(role="user", content="\n\n".join(sections))],
             purpose="test_generation",

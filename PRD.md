@@ -113,7 +113,7 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 ├── .github/workflows/ci.yml
 ├── src/autopatch/
 │   ├── __init__.py
-│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp
+│   ├── cli.py                   # entrypoint (thin): run, trace, pr, index, mcp, eval
 │   ├── config.py                # pydantic-settings
 │   ├── agent/
 │   │   ├── loop.py              # plan → act → observe → retry + draft PR
@@ -137,9 +137,12 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 │       ├── logger.py            # structured JSON + cost tracking
 │       └── viewer.py            # terminal + HTML trace viewer
 ├── eval/
-│   ├── issues/                  # real issue fixtures
-│   ├── run_eval.py
-│   └── results/
+│   ├── issues/                  # fixture JSON + expected/*.diff goldens
+│   ├── targets/                 # local buggy packages (offline smoke)
+│   ├── fixtures.py              # load/validate fixtures
+│   ├── scoring.py               # resolve rate, cost, time, edit distance
+│   ├── run_eval.py              # batch harness CLI
+│   └── results/                 # results.json + report.md
 ├── tests/                       # agent unit/integration tests
 └── demo/
     ├── walkthrough.md           # steps for demo video
@@ -173,12 +176,12 @@ Canonical layout (kept in sync with `AGENTS.md`). Paths are relative to the repo
 - Structured logging + terminal/HTML trace viewer (`autopatch trace`, `tracing/viewer.py`).
 - Guardrails: vague-issue precheck + planner flag, max files per patch, sandbox + overall run timeouts.
 
-**Day 3 — Eval, polish, ship**
-- Build eval set: 15-20 real closed issues from small OSS repos where you can diff against the real merged fix.
-- Run eval, record resolve rate, cost, time honestly (imperfect numbers are fine and expected).
-- Write README with architecture diagram, demo GIF, eval table, "what I'd do with more time" section.
-- Record 2-minute demo video.
-- CI pipeline green, Docker build working, push to GitHub public.
+**Day 3 — Eval, polish, ship** ✅ (implemented)
+- Eval set: 15+ real closed GitHub issues + local smoke targets with golden diffs (`eval/issues/`, `eval/targets/`).
+- Harness (`eval/run_eval.py`, `autopatch eval`): resolve rate, cost, time, optional edit distance vs golden; writes `results.json` + `report.md`.
+- README with architecture diagram (Mermaid), demo assets, eval table, failure modes, "what I'd do with more time".
+- Demo walkthrough script for a ~2-minute screencast (`demo/walkthrough.md`).
+- CI pipeline (ruff/mypy/pytest), Docker agent image, inventory baseline metrics (honest — live resolve rate from real runs).
 
 ---
 
@@ -289,11 +292,11 @@ npx skills add anthropics/skills/mcp-builder
 ---
 
 ## 8. README Checklist (what makes a recruiter stop scrolling)
-- [ ] One-line problem statement at the top
-- [ ] Architecture diagram (even a simple Mermaid diagram)
-- [ ] Demo GIF or 2-min video link
-- [ ] Eval results table (resolve rate, cost, time — honest numbers)
-- [ ] "Where it failed and what I learned" section
-- [ ] Quickstart: clone, `docker-compose up`, run against a sample issue in <5 min
-- [ ] Explicit non-goals / scope boundaries
-- [ ] License (MIT/Apache-2.0 for open source)
+- [x] One-line problem statement at the top
+- [x] Architecture diagram (even a simple Mermaid diagram)
+- [x] Demo assets / walkthrough (record 2-min video when ready; screenshots linked)
+- [x] Eval results table (resolve rate, cost, time — honest inventory + harness)
+- [x] "Where it failed and what I learned" section
+- [x] Quickstart: clone, `docker-compose up`, run against a sample issue in <5 min
+- [x] Explicit non-goals / scope boundaries
+- [x] License (MIT/Apache-2.0 for open source)

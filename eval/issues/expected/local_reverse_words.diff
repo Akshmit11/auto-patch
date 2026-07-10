@@ -1,0 +1,9 @@
+--- a/reverse_bug/textutil.py
++++ b/reverse_bug/textutil.py
+@@ -5,5 +5,5 @@ def reverse_words(text: str) -> str:
+     BUG: reverses characters of the whole string instead of word order.
+     """
+-    # BUG: should be " ".join(text.split()[::-1])
+-    return text[::-1]
++    # Fixed: reverse word order, not characters
++    return " ".join(text.split()[::-1])

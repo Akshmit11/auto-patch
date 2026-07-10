@@ -1,0 +1,9 @@
+--- a/percent_bug/stats.py
++++ b/percent_bug/stats.py
+@@ -8,5 +8,5 @@ def percentage(part: float, whole: float) -> float:
+     if whole == 0:
+         raise ZeroDivisionError("whole must be non-zero")
+-    # BUG: should be (part / whole) * 100
+-    return (part / whole) * 1
++    # Fixed: return 0–100 scale
++    return (part / whole) * 100

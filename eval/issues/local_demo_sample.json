@@ -1,0 +1,14 @@
+{
+  "id": "local_demo_sample",
+  "source": "local",
+  "title": "Fix clamp() lower bound (demo sample_target)",
+  "body_file": "demo/sample_issue.md",
+  "repo_path": "demo/sample_target",
+  "test_command": "python -m pytest -q",
+  "expected_files": ["sample_target/mathutil.py"],
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Same bug as Day-1 walkthrough demo package; no golden diff (live agent comparison).",
+  "tags": ["local", "python", "demo"],
+  "enabled": true
+}

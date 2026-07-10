@@ -1,0 +1,15 @@
+{
+  "id": "local_clamp",
+  "source": "local",
+  "title": "Fix clamp() lower bound",
+  "body": "## Problem\n\nIn `clamp_bug/mathutil.py`, `clamp(value, low, high)` does not enforce the lower bound.\n\nWhen `value` is below `low`, it should return `low`. Currently `test_clamp_below_low` fails:\n\n```\nassert clamp(-5, 0, 10) == 0\n```\n\n## Expected\n\n- if value < low → return low\n- if value > high → return high\n- otherwise → return value\n\nStandard: `return max(low, min(high, value))` after normalizing swapped bounds.\n\n## Acceptance\n\nAll tests in `tests/test_mathutil.py` pass.",
+  "repo_path": "eval/targets/clamp_bug",
+  "test_command": "python -m pytest -q",
+  "expected_diff_file": "eval/issues/expected/local_clamp.diff",
+  "expected_files": ["clamp_bug/mathutil.py"],
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Local smoke fixture mirroring the Day-1 demo bug. Golden diff for edit-distance scoring.",
+  "tags": ["local", "python", "smoke", "math"],
+  "enabled": true
+}

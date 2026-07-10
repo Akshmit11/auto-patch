@@ -8,9 +8,11 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from autopatch.tracing.logger import StructuredLogger
+
+T = TypeVar("T")
 
 _ISSUE_URL_RE = re.compile(
     r"https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+)/issues/(?P<number>\d+)",
@@ -128,8 +130,7 @@ def parse_pr_url(url: str) -> tuple[str, str, int]:
     match = _PR_URL_RE.match(url.strip())
     if not match:
         raise ValueError(
-            f"Invalid GitHub PR URL: {url!r}. "
-            "Expected https://github.com/<owner>/<repo>/pull/<n>"
+            f"Invalid GitHub PR URL: {url!r}. Expected https://github.com/<owner>/<repo>/pull/<n>"
         )
     return match.group("owner"), match.group("repo"), int(match.group("number"))
 
@@ -162,11 +163,7 @@ def build_pr_body(
     approach = "\n".join(f"- {step}" for step in plan_approach) or "- (see plan log)"
     files = "\n".join(f"- `{p}`" for p in files_touched) or "- (none)"
     test_status = (
-        "passed"
-        if test_passed is True
-        else "failed"
-        if test_passed is False
-        else "not run"
+        "passed" if test_passed is True else "failed" if test_passed is False else "not run"
     )
     issue_line = f"Fixes {issue_url}" if issue_url else "Local / fixture issue (no GitHub link)"
     feedback_block = ""
@@ -205,12 +202,12 @@ def build_pr_body(
 
 
 def _with_github_retries(
-    fn: Callable[[], Any],
+    fn: Callable[[], T],
     *,
     logger: StructuredLogger | None,
     operation: str,
     max_attempts: int = 3,
-) -> Any:
+) -> T:
     """Retry transient GitHub/API failures with simple exponential backoff."""
     last_exc: Exception | None = None
     for attempt in range(1, max_attempts + 1):
@@ -235,7 +232,9 @@ def _with_github_retries(
                 )
             time.sleep(delay)
     assert last_exc is not None
-    raise RuntimeError(f"GitHub {operation} failed after {max_attempts} attempts: {last_exc}") from last_exc
+    raise RuntimeError(
+        f"GitHub {operation} failed after {max_attempts} attempts: {last_exc}"
+    ) from last_exc
 
 
 class GitHubTools:
@@ -334,9 +333,7 @@ class GitHubTools:
                     result_summary=exc.stderr[-500:] if exc.stderr else str(exc),
                     success=False,
                 )
-            raise RuntimeError(
-                f"git clone failed for {owner}/{repo}: {exc.stderr or exc}"
-            ) from exc
+            raise RuntimeError(f"git clone failed for {owner}/{repo}: {exc.stderr or exc}") from exc
 
         if self.logger:
             self.logger.log_tool_call(
@@ -572,7 +569,9 @@ class GitHubTools:
         gh.requester.graphql_query(mutation, {"id": node_id})
 
 
-def create_github_mcp_server(token: str | None = None, logger: StructuredLogger | None = None) -> Any:
+def create_github_mcp_server(
+    token: str | None = None, logger: StructuredLogger | None = None
+) -> Any:
     """Build a FastMCP server for GitHub read + draft PR operations."""
     import json
 

@@ -1,0 +1,15 @@
+{
+  "id": "local_reverse_words",
+  "source": "local",
+  "title": "Fix reverse_words() to reverse word order",
+  "body": "## Problem\n\nIn `reverse_bug/textutil.py`, `reverse_words(text)` should reverse the order of whitespace-separated words, not reverse every character.\n\n`reverse_words(\"hello world\")` should return `\"world hello\"`, not `\"dlrow olleh\"`.\n\n## Expected\n\n`return \" \".join(text.split()[::-1])`\n\n## Acceptance\n\nAll tests in `tests/test_textutil.py` pass.",
+  "repo_path": "eval/targets/reverse_bug",
+  "test_command": "python -m pytest -q",
+  "expected_diff_file": "eval/issues/expected/local_reverse_words.diff",
+  "expected_files": ["reverse_bug/textutil.py"],
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Local string-handling bug for offline eval.",
+  "tags": ["local", "python", "smoke", "strings"],
+  "enabled": true
+}

@@ -1,0 +1,12 @@
+{
+  "id": "gh_kubeflow_mcp_32",
+  "source": "github",
+  "title": "fine_tune fails: SDK generates dataset.data_dir with trailing /.",
+  "issue_url": "https://github.com/kubeflow/mcp-server/issues/32",
+  "test_command": "python -m pytest -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Path-join edge case when relative_path is '.'; localized SDK fix.",
+  "tags": ["github", "kubeflow", "path", "bug"],
+  "enabled": true
+}

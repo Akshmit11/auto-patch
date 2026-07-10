@@ -69,8 +69,7 @@ def test_extract_diff_raises_without_headers() -> None:
 
 
 def test_merge_unified_diffs() -> None:
-    from autopatch.agent.patcher import combine_patch_results, merge_unified_diffs
-    from autopatch.agent.patcher import PatchResult
+    from autopatch.agent.patcher import PatchResult, combine_patch_results, merge_unified_diffs
 
     a = """\
 --- a/a.py

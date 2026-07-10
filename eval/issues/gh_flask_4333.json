@@ -1,0 +1,13 @@
+{
+  "id": "gh_flask_4333",
+  "source": "github",
+  "title": "after_this_request fails with a meaningless error outside request context",
+  "issue_url": "https://github.com/pallets/flask/issues/4333",
+  "expected_pr_url": "https://github.com/pallets/flask/pull/4334",
+  "test_command": "python -m pytest tests/test_basic.py -q",
+  "difficulty": "easy",
+  "language": "python",
+  "notes": "Flask error-message clarity for after_this_request misuse — localized change.",
+  "tags": ["github", "flask", "good-first-issue"],
+  "enabled": true
+}

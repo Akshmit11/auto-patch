@@ -1,0 +1,13 @@
+{
+  "id": "gh_rich_2457",
+  "source": "github",
+  "title": "Console(no_color=True) does not work on Windows 10",
+  "issue_url": "https://github.com/Textualize/rich/issues/2457",
+  "expected_pr_url": "https://github.com/Textualize/rich/pull/2459",
+  "test_command": "python -m pytest tests/test_console.py -q",
+  "difficulty": "medium",
+  "language": "python",
+  "notes": "Windows-specific color disable path in Rich Console.",
+  "tags": ["github", "rich", "windows"],
+  "enabled": true
+}
