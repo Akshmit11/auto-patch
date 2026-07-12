@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 from autopatch.retrieval.symbol_index import SymbolIndex
 from autopatch.tracing.logger import StructuredLogger
+
+# Repo-relative path mentions in issue text (e.g. sample_target/mathutil.py).
+_PATH_MENTION_RE = re.compile(
+    r"(?P<path>(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+\.py)\b",
+)
 
 
 class CodebaseTools:
@@ -73,15 +79,38 @@ class CodebaseTools:
         symbols = self.index.search(query, limit=30)
         files = self.index.relevant_files(query, limit=max_files)
 
-        # Also keyword-scan file paths if symbol search is thin.
+        # Prefer paths explicitly mentioned in the issue text.
+        for mentioned in _paths_mentioned_in_query(query):
+            if mentioned not in files and (self.workspace / mentioned).is_file():
+                files.insert(0, mentioned)
+            if len(files) >= max_files:
+                break
+        files = _dedupe_preserve_order(files)[:max_files]
+
+        # Keyword-scan basenames / relative paths if symbol search is thin.
         if len(files) < max_files:
+            tokens = [tok for tok in re.findall(r"[A-Za-z0-9_.-]{3,}", query.lower())]
             for path in sorted(self.workspace.rglob("*.py")):
-                rel = path.relative_to(self.workspace).as_posix()
+                try:
+                    rel = path.relative_to(self.workspace).as_posix()
+                except ValueError:
+                    continue
                 if rel in files:
                     continue
-                name = path.name.lower()
-                if any(tok in name for tok in query.lower().split() if len(tok) > 3):
+                haystack = f"{rel} {path.name}".lower()
+                if any(tok in haystack for tok in tokens):
                     files.append(rel)
+                if len(files) >= max_files:
+                    break
+
+        # Last resort for tiny packages: include all Python sources (capped).
+        if not files:
+            for path in sorted(self.workspace.rglob("*.py")):
+                try:
+                    rel = path.relative_to(self.workspace).as_posix()
+                except ValueError:
+                    continue
+                files.append(rel)
                 if len(files) >= max_files:
                     break
 
@@ -107,6 +136,27 @@ class CodebaseTools:
                 result_summary=f"{len(file_contents)} files, {len(symbols)} symbols",
             )
         return bundle
+
+
+def _paths_mentioned_in_query(query: str) -> list[str]:
+    """Extract repo-relative ``*.py`` path mentions from free-form issue text."""
+    found: list[str] = []
+    for match in _PATH_MENTION_RE.finditer(query.replace("\\", "/")):
+        path = match.group("path").lstrip("./")
+        if path not in found:
+            found.append(path)
+    return found
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
 
 
 def create_codebase_mcp_server(workspace: Path, logger: StructuredLogger | None = None) -> Any:

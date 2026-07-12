@@ -170,32 +170,56 @@ class DockerRunner:
         *,
         timeout_seconds: int | None = None,
     ) -> ExecResult:
-        """Write a unified diff into the workspace and apply it inside Docker."""
+        """Apply a unified diff (host text first, Docker git/patch fallback)."""
         workspace = workspace.resolve()
-        patch_path = workspace / ".autopatch_patch.diff"
-        patch_path.write_text(patch_text, encoding="utf-8")
-        # Prefer git apply; fall back to patch(1).
+        normalize_workspace_newlines(workspace)
+        patch_text = normalize_text_to_lf(patch_text)
+        write_text_lf(workspace / ".autopatch_patch.diff", patch_text)
+
+        try:
+            _apply_unified_diff(workspace, patch_text)
+            return ExecResult(
+                exit_code=0,
+                stdout="Applied patch via host pure-text applier\n",
+                stderr="",
+                timed_out=False,
+                duration_seconds=0.0,
+            )
+        except Exception as host_exc:
+            host_err = str(host_exc)
+
+        # Prefer git apply; fall back to patch(1) inside Docker.
         script = (
             "set -e; "
-            "if command -v git >/dev/null 2>&1; then "
-            "  git apply --verbose --whitespace=nowarn /workspace/.autopatch_patch.diff || "
-            "  git apply --verbose --reject --whitespace=nowarn /workspace/.autopatch_patch.diff; "
-            "elif command -v patch >/dev/null 2>&1; then "
-            "  patch -p1 < /workspace/.autopatch_patch.diff; "
-            "else "
-            "  echo 'Neither git nor patch available in sandbox image' >&2; exit 127; "
-            "fi"
-        )
-        # python:3.11-slim lacks git by default — install git for apply reliability.
-        install_and_apply = (
             "export DEBIAN_FRONTEND=noninteractive; "
-            "apt-get update -qq && apt-get install -y -qq git patch >/dev/null; " + script
+            "apt-get update -qq && apt-get install -y -qq git patch >/dev/null; "
+            # Strip CRs from sources (Windows bind mounts / autocrlf leftovers).
+            "find /workspace -type f \\( -name '*.py' -o -name '*.txt' -o -name '*.toml' "
+            "-o -name '*.md' -o -name '*.cfg' -o -name '*.ini' \\) "
+            "! -path '*/.git/*' -print0 2>/dev/null | "
+            "xargs -0 -r sed -i 's/\\r$//' ; "
+            "git -c core.autocrlf=false apply --verbose --whitespace=nowarn "
+            "/workspace/.autopatch_patch.diff || "
+            "patch -p1 --binary < /workspace/.autopatch_patch.diff"
         )
-        return self.run_command(
+        result = self.run_command(
             workspace,
-            ["bash", "-lc", install_and_apply],
+            ["bash", "-lc", script],
             timeout_seconds=timeout_seconds,
         )
+        if not result.ok:
+            # Surface both failure modes for the retry loop.
+            merged_stderr = (
+                f"host_apply_error: {host_err}\n{result.stderr}".strip()
+            )
+            return ExecResult(
+                exit_code=result.exit_code,
+                stdout=result.stdout,
+                stderr=merged_stderr,
+                timed_out=result.timed_out,
+                duration_seconds=result.duration_seconds,
+            )
+        return result
 
     def apply_patch_and_test(
         self,
@@ -206,10 +230,41 @@ class DockerRunner:
         install_command: list[str] | str | None = None,
         timeout_seconds: int | None = None,
     ) -> ExecResult:
-        """Apply patch, optionally install deps, then run tests — all in Docker."""
+        """Apply patch (text-safe), then install deps + run tests inside Docker.
+
+        Patch application is pure text (host fuzzy applier, then Docker git/patch).
+        Target-repo code execution (pip/pytest) always stays in Docker.
+        """
         workspace = workspace.resolve()
-        patch_path = workspace / ".autopatch_patch.diff"
-        patch_path.write_text(patch_text, encoding="utf-8")
+        normalize_workspace_newlines(workspace)
+        patch_text = normalize_text_to_lf(patch_text)
+        write_text_lf(workspace / ".autopatch_patch.diff", patch_text)
+        write_text_lf(workspace / ".autopatch_generated.diff", patch_text)
+
+        apply_notes: list[str] = []
+        try:
+            _apply_unified_diff(workspace, patch_text)
+            apply_notes.append("host pure-text apply: ok")
+        except Exception as host_exc:
+            apply_notes.append(f"host pure-text apply: failed ({host_exc})")
+            # Fall back to git/patch in Docker before running tests.
+            apply_result = self.apply_patch(
+                workspace, patch_text, timeout_seconds=timeout_seconds
+            )
+            if not apply_result.ok:
+                return ExecResult(
+                    exit_code=apply_result.exit_code or 1,
+                    stdout=apply_result.stdout,
+                    stderr=(
+                        "Patch failed to apply before tests.\n"
+                        + "\n".join(apply_notes)
+                        + "\n"
+                        + apply_result.stderr
+                    ),
+                    timed_out=apply_result.timed_out,
+                    duration_seconds=apply_result.duration_seconds,
+                )
+            apply_notes.append("docker git/patch apply: ok")
 
         test_cmd = test_command or ["python", "-m", "pytest", "-q"]
         if isinstance(test_cmd, list):
@@ -217,7 +272,6 @@ class DockerRunner:
         else:
             test_shell = test_cmd
 
-        install_shell = ""
         if install_command:
             if isinstance(install_command, list):
                 install_shell = " ".join(shlex.quote(part) for part in install_command)
@@ -231,28 +285,33 @@ class DockerRunner:
                 "if [ -f pyproject.toml ]; then pip install -q -e . 2>/dev/null || true; fi"
             )
 
+        # Tests only — patch already applied as pure text on the mounted workspace.
         script = (
             "set -e; "
             "export DEBIAN_FRONTEND=noninteractive; "
-            "apt-get update -qq && apt-get install -y -qq git patch >/dev/null; "
-            "git apply --verbose --whitespace=nowarn /workspace/.autopatch_patch.diff || "
-            "patch -p1 < /workspace/.autopatch_patch.diff; "
             f"{install_shell}; "
             f"{test_shell}"
         )
-        # Network needed for pip install; temporarily enable unless explicitly forbidden.
-        # For Day 1 correctness we allow network during test setup by using a second mode.
         previous = self.network_disabled
         try:
             # pip needs network
             self.network_disabled = False
-            return self.run_command(
+            result = self.run_command(
                 workspace,
                 ["bash", "-lc", script],
                 timeout_seconds=timeout_seconds,
             )
         finally:
             self.network_disabled = previous
+
+        note = "; ".join(apply_notes)
+        return ExecResult(
+            exit_code=result.exit_code,
+            stdout=f"{note}\n{result.stdout}",
+            stderr=result.stderr,
+            timed_out=result.timed_out,
+            duration_seconds=result.duration_seconds,
+        )
 
     def apply_patch_host_safe(self, workspace: Path, patch_text: str) -> None:
         """Apply a unified diff on the host filesystem without executing repo code.
@@ -261,8 +320,8 @@ class DockerRunner:
         runs modules from the target repository.
         """
         workspace = workspace.resolve()
-        # Pure text apply for simple unified diffs (no shelling to host for code exec).
-        _apply_unified_diff(workspace, patch_text)
+        normalize_workspace_newlines(workspace)
+        _apply_unified_diff(workspace, normalize_text_to_lf(patch_text))
 
 
 def _decode(data: bytes | str | None) -> str:
@@ -273,16 +332,87 @@ def _decode(data: bytes | str | None) -> str:
     return data.decode("utf-8", errors="replace")
 
 
+_TEXT_SUFFIXES = {
+    ".py",
+    ".txt",
+    ".md",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".yml",
+    ".yaml",
+    ".json",
+    ".rst",
+    ".in",
+    ".diff",
+    ".patch",
+}
+
+
+def normalize_text_to_lf(text: str) -> str:
+    """Normalize any newline style to Unix LF."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def write_text_lf(path: Path, text: str) -> None:
+    """Write text as UTF-8 with LF only (never Windows CRLF translation)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(normalize_text_to_lf(text).encode("utf-8"))
+
+
+def normalize_workspace_newlines(workspace: Path) -> None:
+    """Rewrite text files under ``workspace`` to LF in place.
+
+    Critical on Windows: ``Path.write_text`` and ``git core.autocrlf`` can leave
+    CRLF on disk while LLM patches use LF, so ``git apply`` / ``patch`` fail with
+    "different line endings" or context mismatches.
+    """
+    workspace = workspace.resolve()
+    for path in workspace.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            rel_parts = path.relative_to(workspace).parts
+        except ValueError:
+            continue
+        if any(part in {".git", "__pycache__", ".venv", "venv", "node_modules"} for part in rel_parts):
+            continue
+        if path.suffix.lower() not in _TEXT_SUFFIXES and path.name not in {
+            "Dockerfile",
+            "Makefile",
+            ".gitignore",
+            ".env.example",
+        }:
+            continue
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            continue
+        if b"\0" in raw[:8192]:
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        normalized = normalize_text_to_lf(text)
+        if normalized.encode("utf-8") != raw:
+            path.write_bytes(normalized.encode("utf-8"))
+
+
 def _apply_unified_diff(workspace: Path, patch_text: str) -> None:
-    """Minimal unified-diff applier for single-file create/modify (Day 1).
+    """Minimal unified-diff applier for create/modify (no target code execution).
 
     Supports:
     - modifications with ``--- a/path`` / ``+++ b/path``
     - new files (``--- /dev/null``)
-    Does not execute any code from the target repo.
+    - fuzzy context match and deleted-line-only fallback (LLM hunks are often imperfect)
+
+    Writes are atomic per patch: all files are computed first, then written, so a
+    mid-patch failure never leaves a half-applied tree.
     """
-    lines = patch_text.splitlines()
+    lines = normalize_text_to_lf(patch_text).splitlines()
     i = 0
+    pending_writes: list[tuple[Path, str]] = []
     while i < len(lines):
         if not lines[i].startswith("--- "):
             i += 1
@@ -320,18 +450,21 @@ def _apply_unified_diff(workspace: Path, patch_text: str) -> None:
                 for hl in hunk_lines:
                     if (hl.startswith("+") and not hl.startswith("+++")) or hl.startswith(" "):
                         content_lines.append(hl[1:])
-            target_file.parent.mkdir(parents=True, exist_ok=True)
             text = "\n".join(content_lines)
             if text and not text.endswith("\n"):
                 text += "\n"
-            target_file.write_text(text, encoding="utf-8")
+            pending_writes.append((target_file, text))
             continue
 
         if not target_file.exists():
             raise FileNotFoundError(f"Cannot patch missing file: {target}")
-        original = target_file.read_text(encoding="utf-8").splitlines()
+        original = normalize_text_to_lf(target_file.read_text(encoding="utf-8")).splitlines()
         result = _apply_hunks(original, hunks)
-        target_file.write_text("\n".join(result) + ("\n" if result else ""), encoding="utf-8")
+        pending_writes.append((target_file, "\n".join(result) + ("\n" if result else "")))
+
+    for target_file, text in pending_writes:
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        write_text_lf(target_file, text)
 
 
 def _strip_diff_path(raw: str) -> str:
@@ -369,13 +502,21 @@ def _apply_hunks(
         start_idx = old_start - 1
         old_segment: list[str] = []
         new_segment: list[str] = []
+        deleted_only: list[str] = []
+        added_only: list[str] = []
         for hl in hunk_lines:
             if hl.startswith("\\"):
                 continue
+            if hl.startswith("---") or hl.startswith("+++"):
+                continue
             if hl.startswith("-"):
-                old_segment.append(hl[1:])
+                body = hl[1:]
+                old_segment.append(body)
+                deleted_only.append(body)
             elif hl.startswith("+"):
-                new_segment.append(hl[1:])
+                body = hl[1:]
+                new_segment.append(body)
+                added_only.append(body)
             elif hl.startswith(" "):
                 old_segment.append(hl[1:])
                 new_segment.append(hl[1:])
@@ -385,23 +526,43 @@ def _apply_hunks(
                 new_segment.append(hl)
         end_idx = start_idx + len(old_segment)
         if result[start_idx:end_idx] != old_segment and old_count > 0:
-            # Fuzzy: try to locate old_segment nearby
-            found = None
-            for offset in range(0, 20):
-                for cand in (start_idx + offset, start_idx - offset):
-                    if cand < 0:
-                        continue
-                    if result[cand : cand + len(old_segment)] == old_segment:
-                        found = cand
-                        break
-                if found is not None:
-                    break
+            # Fuzzy: try to locate full old_segment nearby, then whole file.
+            found = _find_segment(result, old_segment, preferred=start_idx)
+            if found is None and deleted_only:
+                # LLM often drops nearby context lines (e.g. a comment between
+                # statements). Match pure deleted lines and swap for pure adds.
+                found_del = _find_segment(result, deleted_only, preferred=start_idx)
+                if found_del is not None:
+                    result[found_del : found_del + len(deleted_only)] = added_only
+                    continue
             if found is None:
                 raise ValueError(f"Failed to apply hunk at line {old_start}: context mismatch")
             start_idx = found
             end_idx = start_idx + len(old_segment)
         result[start_idx:end_idx] = new_segment
     return result
+
+
+def _find_segment(lines: list[str], segment: list[str], *, preferred: int) -> int | None:
+    """Locate ``segment`` near ``preferred`` index, then anywhere in the file."""
+    if not segment:
+        return preferred if 0 <= preferred <= len(lines) else None
+    n = len(segment)
+    if n > len(lines):
+        return None
+    for offset in range(0, max(len(lines), 40)):
+        for cand in (preferred + offset, preferred - offset):
+            if cand < 0 or cand + n > len(lines):
+                continue
+            if lines[cand : cand + n] == segment:
+                return cand
+        if offset > len(lines):
+            break
+    # Full scan as last resort
+    for cand in range(0, len(lines) - n + 1):
+        if lines[cand : cand + n] == segment:
+            return cand
+    return None
 
 
 def make_tar_bytes(path: Path) -> bytes:

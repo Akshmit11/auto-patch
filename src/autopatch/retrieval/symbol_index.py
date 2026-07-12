@@ -134,13 +134,21 @@ class SymbolIndex:
         self._by_file.clear()
 
         for path in sorted(root.rglob("*.py")):
-            if any(part in _SKIP_DIR_NAMES for part in path.parts):
+            # Only skip relative to the workspace root. Absolute paths often live
+            # under AutoPatch's own `.autopatch/work/<run>/repo/...`; if we
+            # checked path.parts on the absolute path, every file would be
+            # skipped because `.autopatch` is a skip name.
+            try:
+                rel_path = path.relative_to(root)
+            except ValueError:
+                continue
+            if any(part in _SKIP_DIR_NAMES for part in rel_path.parts):
                 continue
             try:
                 source = path.read_bytes()
             except OSError:
                 continue
-            rel = path.relative_to(root).as_posix()
+            rel = rel_path.as_posix()
             file_symbols = self._parse_file(rel, source)
             self._by_file[rel] = file_symbols
             self._symbols.extend(file_symbols)

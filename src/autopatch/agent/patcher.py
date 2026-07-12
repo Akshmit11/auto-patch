@@ -17,6 +17,13 @@ Rules:
 - Do NOT rewrite entire large files if a small change works.
 - Paths in the diff must be repository-relative (e.g. src/foo.py).
 - Use --- a/path and +++ b/path headers.
+- Context lines (unchanged) MUST start with a single space character.
+- Deleted lines MUST start with '-'; added lines MUST start with '+'.
+- Hunk headers @@ -old_start,old_count +new_start,new_count @@ MUST match
+  the exact number of old/new lines in that hunk (count space and - as old;
+  space and + as new).
+- Context lines MUST match the provided file contents EXACTLY (do not invent
+  alternate implementations of existing functions).
 - Prefer minimal, reviewable changes.
 - Prefer including at least one pytest that covers the issue (tests/test_*.py).
 - Do not touch more files than listed in the plan unless strictly necessary.

@@ -518,6 +518,10 @@ class AgentLoop:
                     ".autopatch",
                 ),
             )
+            # Windows: force LF so Docker git/patch and LLM diffs agree.
+            from autopatch.sandbox.docker_runner import normalize_workspace_newlines
+
+            normalize_workspace_newlines(dest)
             _git_init_snapshot(dest)
             return dest
 
@@ -599,7 +603,7 @@ def _reset_workspace(workspace: Path) -> None:
         return
     try:
         subprocess.run(
-            ["git", "reset", "--hard", "HEAD"],
+            ["git", "-c", "core.autocrlf=false", "reset", "--hard", "HEAD"],
             cwd=workspace,
             check=True,
             capture_output=True,
@@ -614,6 +618,9 @@ def _reset_workspace(workspace: Path) -> None:
             text=True,
             timeout=60,
         )
+        from autopatch.sandbox.docker_runner import normalize_workspace_newlines
+
+        normalize_workspace_newlines(workspace)
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
@@ -628,20 +635,20 @@ def _git_init_snapshot(repo: Path) -> None:
             capture_output=True,
             text=True,
         )
-        subprocess.run(
-            ["git", "config", "user.email", "autopatch@local"],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(
-            ["git", "config", "user.name", "AutoPatch"],
-            cwd=repo,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        # Disable CRLF conversion — Docker sandbox expects Unix LF files.
+        for key, value in (
+            ("user.email", "autopatch@local"),
+            ("user.name", "AutoPatch"),
+            ("core.autocrlf", "false"),
+            ("core.eol", "lf"),
+        ):
+            subprocess.run(
+                ["git", "config", key, value],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
         subprocess.run(
             ["git", "add", "-A"],
             cwd=repo,
@@ -657,7 +664,7 @@ def _git_init_snapshot(repo: Path) -> None:
             text=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
-        # Host without git: pure-text apply path still works inside Docker after apt install.
+        # Host without git: pure-text apply path still works.
         pass
 
 

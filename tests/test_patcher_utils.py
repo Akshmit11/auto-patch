@@ -106,3 +106,71 @@ def test_combine_rejects_if_any_rejected() -> None:
     combined = combine_patch_results(good, bad)
     assert combined.rejected
     assert combined.reject_reason == "nope"
+
+
+def test_apply_unified_diff_tolerates_crlf_sources(tmp_path: Path) -> None:
+    """Windows-style CRLF files must still accept LF unified diffs."""
+    from autopatch.sandbox.docker_runner import normalize_workspace_newlines
+
+    target = tmp_path / "sample_target"
+    target.mkdir()
+    py = target / "mathutil.py"
+    # CRLF on disk (common after git autocrlf / Windows editors)
+    py.write_bytes(
+        b"def clamp(value, low, high):\r\n"
+        b"    if high < low:\r\n"
+        b"        low, high = high, low\r\n"
+        b"    # BUG: should be max(low, min(high, value))\r\n"
+        b"    return min(low, max(high, value))\r\n"
+    )
+    normalize_workspace_newlines(tmp_path)
+    diff = """\
+--- a/sample_target/mathutil.py
++++ b/sample_target/mathutil.py
+@@ -4,2 +4,2 @@
+-    # BUG: should be max(low, min(high, value))
+-    return min(low, max(high, value))
++    # Fixed
++    return max(low, min(high, value))
+"""
+    _apply_unified_diff(tmp_path, diff)
+    text = py.read_text(encoding="utf-8")
+    assert "return max(low, min(high, value))" in text
+    assert b"\r" not in py.read_bytes()
+
+
+def test_apply_unified_diff_deleted_line_fallback(tmp_path: Path) -> None:
+    """LLM hunks often omit a nearby comment; still apply the real change line."""
+    target = tmp_path / "sample_target"
+    target.mkdir()
+    py = target / "mathutil.py"
+    py.write_text(
+        "def clamp(value: float, low: float, high: float) -> float:\n"
+        '    """Clamp value.\n'
+        "\n"
+        "    Intentional bug for AutoPatch Day-1: lower bound is not applied correctly.\n"
+        '    """\n'
+        "    if high < low:\n"
+        "        low, high = high, low\n"
+        "    # BUG: should be max(low, min(high, value))\n"
+        "    return min(low, max(high, value))\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    # Context jumps from swap line directly to return — skips the BUG comment.
+    diff = """\
+--- a/sample_target/mathutil.py
++++ b/sample_target/mathutil.py
+@@ -6,5 +6,5 @@ def clamp(value: float, low: float, high: float) -> float:
+     Intentional bug for AutoPatch Day-1: lower bound is not applied correctly.
+     \"\"\"
+     if high < low:
+         low, high = high, low
+-    return min(low, max(high, value))
++    return max(low, min(high, value))
+"""
+    _apply_unified_diff(tmp_path, diff)
+    text = py.read_text(encoding="utf-8")
+    assert "return max(low, min(high, value))" in text
+    assert "min(low, max(high, value))" not in text
+    assert "# BUG:" in text  # comment preserved
